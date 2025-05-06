@@ -6,8 +6,8 @@
 
 A GitHub Action that builds and publishes Docker images for JavaScript applications built with PNPM. This action works seamlessly with other p6m-actions like:
 
-- [docker-buildx-setup](https://github.com/p6m-actions/docker-buildx-setup)
 - [docker-repository-login](https://github.com/p6m-actions/docker-repository-login)
+- [docker-buildx-setup](https://github.com/p6m-actions/docker-buildx-setup)
 - [js-pnpm-setup](https://github.com/p6m-actions/js-pnpm-setup)
 - [js-pnpm-build](https://github.com/p6m-actions/js-pnpm-build)
 
