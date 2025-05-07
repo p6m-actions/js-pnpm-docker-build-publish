@@ -131,10 +131,8 @@ You can use this action with the platform-application-manifest-dispatch action t
   uses: p6m-actions/platform-application-manifest-dispatch@v1
   with:
     repository: ${{ github.repository }}
-    directory-name: "fe-$(basename ${GITHUB_REPOSITORY})"
-    resource-directory-name: "$(basename ${GITHUB_REPOSITORY})"
     image-name: "fe-$(basename ${GITHUB_REPOSITORY})"
-    environment-dir: "dev"
+    environment: "dev"
     digest: ${{ steps.build-push.outputs.image-digest }}
     update-manifest-token: ${{ secrets.UPDATE_MANIFEST_TOKEN }}
     platform-dispatch-url: ${{ vars.PLATFORM_DISPATCH_URL }}
