@@ -4,12 +4,14 @@
 
 ## Description
 
-A simple GitHub Action that builds and publishes a Docker image for a JavaScript application. This action is a thin wrapper around `docker buildx build` that automatically handles tagging with package version and retrieval of the image digest.
+A simple GitHub Action that builds and publishes a Docker image for a JavaScript application. This action automatically handles tagging with package version and retrieval of the image digest, simplifying the Docker build and publish process in your workflows.
 
 This action works seamlessly with other p6m-actions like:
 
 - [docker-repository-login](https://github.com/p6m-actions/docker-repository-login)
 - [docker-buildx-setup](https://github.com/p6m-actions/docker-buildx-setup)
+- [js-pnpm-setup](https://github.com/p6m-actions/js-pnpm-setup)
+- [js-pnpm-build](https://github.com/p6m-actions/js-pnpm-build)
 - [platform-application-manifest-dispatch](https://github.com/p6m-actions/platform-application-manifest-dispatch)
 
 ## Usage
@@ -138,22 +140,88 @@ You can use this action with the platform-application-manifest-dispatch action t
     platform-dispatch-url: ${{ vars.PLATFORM_DISPATCH_URL }}
 ```
 
-## Behind the Scenes
+### Complete CI/CD Workflow Example
 
-This action essentially performs the following steps:
+Here's a comprehensive example showing a full CI/CD workflow with all p6m-actions:
+
+```yaml
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      # Set up Node.js and PNPM with caching
+      - name: Setup Node.js and PNPM
+        uses: p6m-actions/js-pnpm-setup@v1
+        with:
+          node-version: 18
+          install-dependencies: true
+          
+      # Build the application with proper linting
+      - name: Build JavaScript Application
+        id: build-js
+        uses: p6m-actions/js-pnpm-build@v1
+        with:
+          run-lint: true
+          build-args: "--all --parallel=5 --prod --exclude docs"
+        
+      # Set up Docker Buildx for multi-architecture builds
+      - name: Set up Docker Buildx
+        uses: p6m-actions/docker-buildx-setup@v1
+
+      # Log in to container registry
+      - name: Login to Container Registry
+        uses: p6m-actions/docker-repository-login@v1
+        with:
+          registry: ${{ env.ARTIFACTORY_REGISTRY }}
+          username: ${{ secrets.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+
+      # Build and push Docker image with version from package.json
+      - name: Build and Push Docker Image
+        id: build-push
+        uses: p6m-actions/js-pnpm-docker-build-publish@v1
+        with:
+          registry: ${{ env.ARTIFACTORY_REGISTRY }}
+          
+      # Update application manifest with the new image digest
+      - name: Update Application Manifest
+        if: steps.build-push.outputs.image-digest != ''
+        uses: p6m-actions/platform-application-manifest-dispatch@v1
+        with:
+          repository: ${{ github.repository }}
+          image-name: "fe-$(basename ${GITHUB_REPOSITORY})"
+          environment: "dev"
+          digest: ${{ steps.build-push.outputs.image-digest }}
+          update-manifest-token: ${{ secrets.UPDATE_MANIFEST_TOKEN }}
+          platform-dispatch-url: ${{ vars.PLATFORM_DISPATCH_URL }}
+```
+
+## How It Works
+
+This action performs the following steps:
 
 1. Determines the application name (from input or repository name)
 2. Extracts the version from package.json or uses the provided version
 3. Constructs the full image name with registry, app name, and version
-4. Runs `docker buildx build` with the specified platforms and tags
+4. Builds and pushes the Docker image with the appropriate tags
 5. Extracts the image digest from the pushed image
 6. Returns the digest, image name, and version as outputs
 
-The simplified command it runs (when also tagging as latest) is similar to:
+By using this action instead of directly calling Docker commands, you get:
 
-```bash
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t registry/app-name:1.2.3 \
-  -t registry/app-name:latest \
-  -f Dockerfile --push .
-```
+- Automatic version extraction from package.json
+- Proper handling of multiple platforms
+- Simple configuration with sensible defaults
+- Reliable digest extraction for use with manifest updates
+- Better workflow portability and maintainability
