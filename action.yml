@@ -4,6 +4,10 @@ author: "Jimmie Fulton <jimmie.fulton@gmail.com>"
 
 # Define the inputs for this action
 inputs:
+  project-path:
+    description: "Relative path to the project directory containing package.json (must not contain '..' or be absolute)"
+    required: false
+    default: "."
   platforms:
     description: "The platforms to build for (comma-separated)"
     required: false
@@ -65,13 +69,14 @@ runs:
           VERSION="${{ inputs.version }}"
         else
           # Extract version from package.json using pnpm
-          if [ -f "package.json" ]; then
-            VERSION=$(pnpm -s pkg get version)
+          PROJECT_PATH="${{ inputs.project-path }}"
+          if [ -f "${PROJECT_PATH}/package.json" ]; then
+            VERSION=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version)
             # Remove quotes if present
             VERSION="${VERSION//\"/}"
-            echo "Extracted version from package.json: ${VERSION}"
+            echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
           else
-            echo "package.json not found. Using 'latest' as version."
+            echo "package.json not found at ${PROJECT_PATH}. Using 'latest' as version."
             VERSION="latest"
           fi
         fi

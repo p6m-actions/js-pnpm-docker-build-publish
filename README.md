@@ -25,15 +25,16 @@ This action works seamlessly with other p6m-actions like:
 
 ## Inputs
 
-| Input         | Description                                                | Required | Default                   |
-| ------------- | ---------------------------------------------------------- | -------- | ------------------------- |
-| `platforms`   | The platforms to build for (comma-separated)               | No       | `linux/amd64,linux/arm64` |
-| `app-name`    | The name of the application to build                       | No       | Repository name           |
-| `version`     | The version to use for the Docker image                    | No       | From package.json         |
-| `tag-latest`  | Whether to also tag the image as 'latest'                  | No       | `true`                    |
-| `dockerfile`  | Path to the Dockerfile                                     | No       | `Dockerfile`              |
-| `context`     | Docker build context                                       | No       | `.`                       |
-| `registry`    | Docker registry URL                                        | Yes      | -                         |
+| Input          | Description                                                | Required | Default                   |
+| -------------- | ---------------------------------------------------------- | -------- | ------------------------- |
+| `project-path` | Relative path to the project directory containing package.json (must not contain '..' or be absolute) | No | `.` |
+| `platforms`    | The platforms to build for (comma-separated)               | No       | `linux/amd64,linux/arm64` |
+| `app-name`     | The name of the application to build                       | No       | Repository name           |
+| `version`      | The version to use for the Docker image                    | No       | From package.json         |
+| `tag-latest`   | Whether to also tag the image as 'latest'                  | No       | `true`                    |
+| `dockerfile`   | Path to the Dockerfile                                     | No       | `Dockerfile`              |
+| `context`      | Docker build context                                       | No       | `.`                       |
+| `registry`     | Docker registry URL                                        | Yes      | -                         |
 
 ## Outputs
 
@@ -116,6 +117,32 @@ For more specific needs:
     context: "./dist"
     registry: ${{ env.ARTIFACTORY_REGISTRY }}
 ```
+
+### Project in a Subdirectory
+
+For repositories where the project is not at the root. The `project-path` specifies where to find `package.json` for version extraction:
+
+```yaml
+- name: Setup PNPM
+  uses: p6m-actions/js-pnpm-setup@v1
+  with:
+    project-path: "packages/frontend"
+
+- name: Build Application
+  uses: p6m-actions/js-pnpm-build@v1
+  with:
+    project-path: "packages/frontend"
+
+- name: Build and Push Docker Image
+  uses: p6m-actions/js-pnpm-docker-build-publish@v1
+  with:
+    project-path: "packages/frontend"
+    context: "packages/frontend"
+    dockerfile: "packages/frontend/Dockerfile"
+    registry: ${{ env.ARTIFACTORY_REGISTRY }}
+```
+
+> **Note:** The `project-path` is used for version extraction from `package.json`. You typically want `context` to match `project-path`, and `dockerfile` to point to the Dockerfile within that directory.
 
 ### With Manifest Dispatch
 
