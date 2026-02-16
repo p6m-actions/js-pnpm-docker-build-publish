@@ -12,8 +12,12 @@ inputs:
     description: "The platforms to build for (comma-separated)"
     required: false
     default: "linux/amd64,linux/arm64"
+  image-name:
+    description: "The name for the Docker image (defaults to repository name)"
+    required: false
+    default: ""
   app-name:
-    description: "The name of the application to build (defaults to repository name)"
+    description: "Deprecated: Use 'image-name' instead. Alias for backward compatibility."
     required: false
     default: ""
   version:
@@ -56,12 +60,15 @@ runs:
       id: build-image
       shell: bash
       run: |
-        # Determine app name
-        if [ -n "${{ inputs.app-name }}" ]; then
-          APP_NAME="${{ inputs.app-name }}"
+        # Determine image name (prefer image-name, fall back to app-name for backward compatibility)
+        if [ -n "${{ inputs.image-name }}" ]; then
+          IMAGE_NAME="${{ inputs.image-name }}"
+        elif [ -n "${{ inputs.app-name }}" ]; then
+          echo "::warning::The 'app-name' input is deprecated. Please use 'image-name' instead."
+          IMAGE_NAME="${{ inputs.app-name }}"
         else
-          # Extract app name from repository name
-          APP_NAME=$(basename ${GITHUB_REPOSITORY})
+          # Extract image name from repository name
+          IMAGE_NAME=$(basename ${GITHUB_REPOSITORY})
         fi
         
         # Determine version
@@ -82,14 +89,14 @@ runs:
         fi
         
         # Build full image names
-        VERSIONED_IMAGE="${{ inputs.registry }}/${APP_NAME}:${VERSION}"
+        VERSIONED_IMAGE="${{ inputs.registry }}/${IMAGE_NAME}:${VERSION}"
         
         # Build tag arguments
         TAGS="-t ${VERSIONED_IMAGE}"
         
         # Add latest tag if requested
         if [ "${{ inputs.tag-latest }}" = "true" ]; then
-          LATEST_IMAGE="${{ inputs.registry }}/${APP_NAME}:latest"
+          LATEST_IMAGE="${{ inputs.registry }}/${IMAGE_NAME}:latest"
           TAGS="${TAGS} -t ${LATEST_IMAGE}"
         fi
         

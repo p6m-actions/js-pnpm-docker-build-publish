@@ -29,7 +29,7 @@ This action works seamlessly with other p6m-actions like:
 | -------------- | ---------------------------------------------------------- | -------- | ------------------------- |
 | `project-path` | Relative path to the project directory containing package.json (must not contain '..' or be absolute) | No | `.` |
 | `platforms`    | The platforms to build for (comma-separated)               | No       | `linux/amd64,linux/arm64` |
-| `app-name`     | The name of the application to build                       | No       | Repository name           |
+| `image-name`   | The name for the Docker image                              | No       | Repository name           |
 | `version`      | The version to use for the Docker image                    | No       | From package.json         |
 | `tag-latest`   | Whether to also tag the image as 'latest'                  | No       | `true`                    |
 | `dockerfile`   | Path to the Dockerfile                                     | No       | `Dockerfile`              |
@@ -110,7 +110,7 @@ For more specific needs:
   id: build-push
   uses: p6m-actions/js-pnpm-docker-build-publish@v1
   with:
-    app-name: "my-custom-app-name"
+    image-name: "my-custom-image-name"
     platforms: linux/amd64
     tag-latest: "false"
     dockerfile: "./docker/Dockerfile.prod"
@@ -238,9 +238,9 @@ jobs:
 
 This action performs the following steps:
 
-1. Determines the application name (from input or repository name)
+1. Determines the image name (from input or repository name)
 2. Extracts the version from package.json or uses the provided version
-3. Constructs the full image name with registry, app name, and version
+3. Constructs the full image name with registry, image name, and version
 4. Builds and pushes the Docker image with the appropriate tags
 5. Extracts the image digest from the pushed image
 6. Returns the digest, image name, and version as outputs
