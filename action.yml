@@ -81,9 +81,14 @@ runs:
             VERSION=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version)
             # Remove quotes if present
             VERSION="${VERSION//\"/}"
-            echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
+            if [ -n "${VERSION}" ]; then
+              echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
+            else
+              echo "::warning::Failed to extract version from ${PROJECT_PATH}/package.json. Using 'latest'."
+              VERSION="latest"
+            fi
           else
-            echo "package.json not found at ${PROJECT_PATH}. Using 'latest' as version."
+            echo "::warning::package.json not found at ${PROJECT_PATH}. Using 'latest'."
             VERSION="latest"
           fi
         fi
