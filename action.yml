@@ -111,21 +111,23 @@ runs:
           echo "Also tagging as: ${LATEST_IMAGE}"
         fi
         
-        # Build and push the image
+        # Build and push the image, capturing metadata for digest
         docker buildx build \
           --platform ${{ inputs.platforms }} \
           ${TAGS} \
           -f ${{ inputs.dockerfile }} \
           --push \
+          --metadata-file /tmp/docker-metadata.json \
           ${{ inputs.context }}
-        
-        # Get the image digest
-        DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${VERSIONED_IMAGE} | cut -d'@' -f2)
-        
-        if [ -n "$DIGEST" ]; then
+
+        # Get the image digest from build metadata
+        DIGEST=$(jq -r '.["containerimage.digest"]' /tmp/docker-metadata.json)
+
+        if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
           echo "Image digest: $DIGEST"
         else
-          echo "Warning: No digest found for ${VERSIONED_IMAGE}"
+          echo "::warning::No digest found in build metadata"
+          DIGEST=""
         fi
         
         # Set outputs
