@@ -79,8 +79,9 @@ runs:
           PROJECT_PATH="${{ inputs.project-path }}"
           if [ -f "${PROJECT_PATH}/package.json" ]; then
             VERSION=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version)
-            # Remove quotes if present
+            # Remove quotes and whitespace
             VERSION="${VERSION//\"/}"
+            VERSION="${VERSION//[[:space:]]/}"
             if [ -n "${VERSION}" ]; then
               echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
             else
