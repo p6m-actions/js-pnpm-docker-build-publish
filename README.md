@@ -14,6 +14,29 @@ This action works seamlessly with other p6m-actions like:
 - [js-pnpm-build](https://github.com/p6m-actions/js-pnpm-build)
 - [platform-application-manifest-dispatch](https://github.com/p6m-actions/platform-application-manifest-dispatch)
 
+## Prerequisites
+
+This action requires Docker to be authenticated to your container registry before use. It does not handle authentication itself - it relies on credentials stored in Docker's credential store (`~/.docker/config.json`) on the runner.
+
+**Required steps before using this action:**
+
+1. **Set up Docker Buildx** - Required for multi-platform builds
+2. **Log in to your container registry** - Stores credentials that Docker will use when pushing
+
+```yaml
+- name: Set up Docker Buildx
+  uses: p6m-actions/docker-buildx-setup@v1
+
+- name: Login to Container Registry
+  uses: p6m-actions/docker-repository-login@v1
+  with:
+    registry: ${{ vars.ARTIFACTORY_HOSTNAME }}
+    username: ${{ secrets.ARTIFACTORY_USERNAME }}
+    password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+```
+
+> **Note:** The `docker-repository-login` action runs `docker login`, which stores credentials in Docker's config. When this action runs `docker buildx build --push`, Docker automatically uses those stored credentials for the matching registry.
+
 ## Usage
 
 ```yaml

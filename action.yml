@@ -111,22 +111,41 @@ runs:
           echo "Also tagging as: ${LATEST_IMAGE}"
         fi
         
-        # Build and push the image
+        # Build and push the image, capturing metadata for digest
+        METADATA_FILE="${RUNNER_TEMP}/docker-metadata-$$.json"
         docker buildx build \
           --platform ${{ inputs.platforms }} \
           ${TAGS} \
           -f ${{ inputs.dockerfile }} \
           --push \
+          --metadata-file "${METADATA_FILE}" \
           ${{ inputs.context }}
-        
-        # Get the image digest
-        DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${VERSIONED_IMAGE} | cut -d'@' -f2)
-        
-        if [ -n "$DIGEST" ]; then
+
+        # Get the image digest from build metadata
+        if ! command -v jq &> /dev/null; then
+          echo "::error::jq is required but not installed"
+          exit 1
+        fi
+
+        if [ ! -f "${METADATA_FILE}" ]; then
+          echo "::error::Build metadata file not found"
+          exit 1
+        fi
+
+        DIGEST=$(jq -r '.["containerimage.digest"]' "${METADATA_FILE}") || {
+          echo "::error::Failed to parse build metadata"
+          exit 1
+        }
+
+        if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
           echo "Image digest: $DIGEST"
         else
-          echo "Warning: No digest found for ${VERSIONED_IMAGE}"
+          echo "::warning::No digest found in build metadata"
+          DIGEST=""
         fi
+
+        # Clean up metadata file
+        rm -f "${METADATA_FILE}"
         
         # Set outputs
         echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
