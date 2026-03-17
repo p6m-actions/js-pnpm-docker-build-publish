@@ -78,18 +78,21 @@ runs:
           # Extract version from package.json using pnpm
           PROJECT_PATH="${{ inputs.project-path }}"
           if [ -f "${PROJECT_PATH}/package.json" ]; then
-            VERSION=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version 2>/dev/null || true)
-            # Remove quotes and whitespace
-            VERSION="${VERSION//\"/}"
+            PNPM_OUTPUT=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version 2>&1)
+            PNPM_EXIT=$?
+            VERSION="${PNPM_OUTPUT//\"/}"
             VERSION="${VERSION//[[:space:]]/}"
-            if [ -n "${VERSION}" ]; then
-              echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
-            else
-              echo "::error::Failed to extract version from ${PROJECT_PATH}/package.json. Provide an explicit 'version' input or ensure 'pnpm pkg get version' works in that directory."
+            if [ $PNPM_EXIT -ne 0 ]; then
+              echo "::error::Failed to extract version from '${PROJECT_PATH}/package.json': ${PNPM_OUTPUT}. Provide an explicit 'version' input or ensure 'pnpm pkg get version' works in that directory."
               exit 1
+            elif [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ] || [ "${VERSION}" = "null" ]; then
+              echo "::error::No version field found in '${PROJECT_PATH}/package.json'. Add a version field or provide an explicit 'version' input."
+              exit 1
+            else
+              echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
             fi
           else
-            echo "::error::package.json not found at ${PROJECT_PATH}. Provide an explicit 'version' input or a valid 'project-path'."
+            echo "::error::package.json not found at '${PROJECT_PATH}/package.json'. Provide an explicit 'version' input or a valid 'project-path'."
             exit 1
           fi
         fi
