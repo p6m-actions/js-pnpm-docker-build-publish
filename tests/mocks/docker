@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Mock for docker. Controlled by:
+#   MOCK_DOCKER_EXIT (default 0) — exit code to return
+# On success, writes fake buildx metadata JSON to the --metadata-file path.
+exit_code="${MOCK_DOCKER_EXIT:-0}"
+if [ "$exit_code" -ne 0 ]; then
+  exit "$exit_code"
+fi
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--metadata-file" ]; then
+    echo '{"containerimage.digest":"sha256:deadbeef"}' > "$arg"
+  fi
+  prev="$arg"
+done
