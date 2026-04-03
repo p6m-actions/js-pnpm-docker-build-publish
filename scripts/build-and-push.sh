@@ -74,14 +74,14 @@ echo "Building for platforms: ${INPUT_PLATFORMS}"
 
 # Build and push the image, capturing metadata for digest
 METADATA_FILE="${RUNNER_TEMP}/docker-metadata-$$.json"
+DOCKER_EXIT=0
 docker buildx build \
   --platform ${INPUT_PLATFORMS} \
   ${TAGS} \
   -f ${INPUT_DOCKERFILE} \
   --push \
   --metadata-file "${METADATA_FILE}" \
-  ${INPUT_CONTEXT}
-DOCKER_EXIT=$?
+  ${INPUT_CONTEXT} || DOCKER_EXIT=$?
 if [ "${DOCKER_EXIT}" -ne 0 ]; then
   echo "::error::docker buildx build failed (exit ${DOCKER_EXIT}). Check Dockerfile path ('${INPUT_DOCKERFILE}'), build context ('${INPUT_CONTEXT}'), platforms ('${INPUT_PLATFORMS}'), and registry authentication for '${INPUT_REGISTRY}'."
   exit "${DOCKER_EXIT}"
