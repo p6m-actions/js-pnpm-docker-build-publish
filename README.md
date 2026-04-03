@@ -275,3 +275,18 @@ By using this action instead of directly calling Docker commands, you get:
 - Simple configuration with sensible defaults
 - Reliable digest extraction for use with manifest updates
 - Better workflow portability and maintainability
+
+## Development
+
+### Running Tests
+
+Tests use [bats-core](https://github.com/bats-core/bats-core). Install it locally, then run from the repo root:
+
+```bash
+# macOS
+brew install bats-core
+
+bats tests/action.bats
+```
+
+Tests that require a real registry are not yet automated. The current suite covers validation and error paths only.
