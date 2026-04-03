@@ -63,20 +63,31 @@ runs:
         # Determine image name (prefer image-name, fall back to app-name for backward compatibility)
         if [ -n "${{ inputs.image-name }}" ]; then
           IMAGE_NAME="${{ inputs.image-name }}"
+          IMAGE_NAME_SOURCE="explicit 'image-name' input"
         elif [ -n "${{ inputs.app-name }}" ]; then
           echo "::warning::The 'app-name' input is deprecated. Please use 'image-name' instead."
           IMAGE_NAME="${{ inputs.app-name }}"
+          IMAGE_NAME_SOURCE="deprecated 'app-name' input"
         else
           # Extract image name from repository name
           IMAGE_NAME=$(basename ${GITHUB_REPOSITORY})
+          IMAGE_NAME_SOURCE="repository name (no 'image-name' input provided)"
         fi
-        
+        echo "Using image name: ${IMAGE_NAME} (source: ${IMAGE_NAME_SOURCE})"
+
         # Determine version
         if [ -n "${{ inputs.version }}" ]; then
           VERSION="${{ inputs.version }}"
+          echo "Using explicit version: ${VERSION}"
         else
-          # Extract version from package.json using pnpm
+          # Validate project-path before using it
           PROJECT_PATH="${{ inputs.project-path }}"
+          case "${PROJECT_PATH}" in
+            /*) echo "::error::'project-path' must be a relative path, got: '${PROJECT_PATH}'"; exit 1 ;;
+            *../*|*..) echo "::error::'project-path' must not contain '..', got: '${PROJECT_PATH}'"; exit 1 ;;
+          esac
+
+          # Extract version from package.json using pnpm
           if [ -f "${PROJECT_PATH}/package.json" ]; then
             PNPM_STDERR_FILE=$(mktemp)
             VERSION=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version 2>"${PNPM_STDERR_FILE}")
@@ -99,24 +110,27 @@ runs:
             exit 1
           fi
         fi
-        
+
         # Build full image names
         VERSIONED_IMAGE="${{ inputs.registry }}/${IMAGE_NAME}:${VERSION}"
-        
+
         # Build tag arguments
         TAGS="-t ${VERSIONED_IMAGE}"
-        
+
         # Add latest tag if requested
         if [ "${{ inputs.tag-latest }}" = "true" ]; then
           LATEST_IMAGE="${{ inputs.registry }}/${IMAGE_NAME}:latest"
           TAGS="${TAGS} -t ${LATEST_IMAGE}"
+        else
+          echo "Skipping ':latest' tag (tag-latest=false)"
         fi
-        
+
         echo "Building and pushing Docker image: ${VERSIONED_IMAGE}"
         if [ "${{ inputs.tag-latest }}" = "true" ]; then
           echo "Also tagging as: ${LATEST_IMAGE}"
         fi
-        
+        echo "Building for platforms: ${{ inputs.platforms }}"
+
         # Build and push the image, capturing metadata for digest
         METADATA_FILE="${RUNNER_TEMP}/docker-metadata-$$.json"
         docker buildx build \
@@ -126,6 +140,11 @@ runs:
           --push \
           --metadata-file "${METADATA_FILE}" \
           ${{ inputs.context }}
+        DOCKER_EXIT=$?
+        if [ "${DOCKER_EXIT}" -ne 0 ]; then
+          echo "::error::docker buildx build failed (exit ${DOCKER_EXIT}). Check Dockerfile path ('${{ inputs.dockerfile }}'), build context ('${{ inputs.context }}'), platforms ('${{ inputs.platforms }}'), and registry authentication for '${{ inputs.registry }}'."
+          exit "${DOCKER_EXIT}"
+        fi
 
         # Get the image digest from build metadata
         if ! command -v jq &> /dev/null; then
@@ -134,25 +153,31 @@ runs:
         fi
 
         if [ ! -f "${METADATA_FILE}" ]; then
-          echo "::error::Build metadata file not found"
+          echo "::error::Build metadata file not found at '${METADATA_FILE}'. The image may have been pushed but the digest cannot be retrieved."
           exit 1
         fi
 
         DIGEST=$(jq -r '.["containerimage.digest"]' "${METADATA_FILE}") || {
-          echo "::error::Failed to parse build metadata"
+          echo "::error::Failed to parse build metadata at '${METADATA_FILE}'"
           exit 1
         }
 
         if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
           echo "Image digest: $DIGEST"
         else
-          echo "::warning::No digest found in build metadata"
+          echo "::warning::No digest found in build metadata. The image was pushed but the digest is unavailable — downstream steps that require a digest (e.g. manifest dispatch) will be skipped."
           DIGEST=""
         fi
 
         # Clean up metadata file
         rm -f "${METADATA_FILE}"
-        
+
+        # Build summary
+        echo "--- Build Summary ---"
+        echo "  Image  : ${VERSIONED_IMAGE}"
+        echo "  Digest : ${DIGEST:-<unavailable>}"
+        echo "  Version: ${VERSION}"
+
         # Set outputs
         echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
         echo "image-name=${VERSIONED_IMAGE}" >> $GITHUB_OUTPUT
