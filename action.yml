@@ -59,104 +59,17 @@ runs:
     - name: Build and push Docker image
       id: build-image
       shell: bash
-      run: |
-        # Determine image name (prefer image-name, fall back to app-name for backward compatibility)
-        if [ -n "${{ inputs.image-name }}" ]; then
-          IMAGE_NAME="${{ inputs.image-name }}"
-        elif [ -n "${{ inputs.app-name }}" ]; then
-          echo "::warning::The 'app-name' input is deprecated. Please use 'image-name' instead."
-          IMAGE_NAME="${{ inputs.app-name }}"
-        else
-          # Extract image name from repository name
-          IMAGE_NAME=$(basename ${GITHUB_REPOSITORY})
-        fi
-        
-        # Determine version
-        if [ -n "${{ inputs.version }}" ]; then
-          VERSION="${{ inputs.version }}"
-        else
-          # Extract version from package.json using pnpm
-          PROJECT_PATH="${{ inputs.project-path }}"
-          if [ -f "${PROJECT_PATH}/package.json" ]; then
-            PNPM_STDERR_FILE=$(mktemp)
-            VERSION=$(cd "${PROJECT_PATH}" && pnpm -s pkg get version 2>"${PNPM_STDERR_FILE}")
-            PNPM_EXIT=$?
-            PNPM_ERROR=$(tr '\n\r' '  ' < "${PNPM_STDERR_FILE}" | sed 's/::/ /g')
-            rm -f "${PNPM_STDERR_FILE}"
-            VERSION="${VERSION//\"/}"
-            VERSION="${VERSION//[[:space:]]/}"
-            if [ "$PNPM_EXIT" -ne 0 ]; then
-              echo "::error::Failed to extract version from '${PROJECT_PATH}/package.json': ${PNPM_ERROR}. Provide an explicit 'version' input or ensure 'pnpm pkg get version' works in that directory."
-              exit 1
-            elif [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ] || [ "${VERSION}" = "null" ]; then
-              echo "::error::No version field found in '${PROJECT_PATH}/package.json'. Add a version field or provide an explicit 'version' input."
-              exit 1
-            else
-              echo "Extracted version from ${PROJECT_PATH}/package.json: ${VERSION}"
-            fi
-          else
-            echo "::error::package.json not found at '${PROJECT_PATH}/package.json'. Provide an explicit 'version' input or a valid 'project-path'."
-            exit 1
-          fi
-        fi
-        
-        # Build full image names
-        VERSIONED_IMAGE="${{ inputs.registry }}/${IMAGE_NAME}:${VERSION}"
-        
-        # Build tag arguments
-        TAGS="-t ${VERSIONED_IMAGE}"
-        
-        # Add latest tag if requested
-        if [ "${{ inputs.tag-latest }}" = "true" ]; then
-          LATEST_IMAGE="${{ inputs.registry }}/${IMAGE_NAME}:latest"
-          TAGS="${TAGS} -t ${LATEST_IMAGE}"
-        fi
-        
-        echo "Building and pushing Docker image: ${VERSIONED_IMAGE}"
-        if [ "${{ inputs.tag-latest }}" = "true" ]; then
-          echo "Also tagging as: ${LATEST_IMAGE}"
-        fi
-        
-        # Build and push the image, capturing metadata for digest
-        METADATA_FILE="${RUNNER_TEMP}/docker-metadata-$$.json"
-        docker buildx build \
-          --platform ${{ inputs.platforms }} \
-          ${TAGS} \
-          -f ${{ inputs.dockerfile }} \
-          --push \
-          --metadata-file "${METADATA_FILE}" \
-          ${{ inputs.context }}
-
-        # Get the image digest from build metadata
-        if ! command -v jq &> /dev/null; then
-          echo "::error::jq is required but not installed"
-          exit 1
-        fi
-
-        if [ ! -f "${METADATA_FILE}" ]; then
-          echo "::error::Build metadata file not found"
-          exit 1
-        fi
-
-        DIGEST=$(jq -r '.["containerimage.digest"]' "${METADATA_FILE}") || {
-          echo "::error::Failed to parse build metadata"
-          exit 1
-        }
-
-        if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
-          echo "Image digest: $DIGEST"
-        else
-          echo "::warning::No digest found in build metadata"
-          DIGEST=""
-        fi
-
-        # Clean up metadata file
-        rm -f "${METADATA_FILE}"
-        
-        # Set outputs
-        echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
-        echo "image-name=${VERSIONED_IMAGE}" >> $GITHUB_OUTPUT
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+      env:
+        INPUT_IMAGE_NAME: ${{ inputs.image-name }}
+        INPUT_APP_NAME: ${{ inputs.app-name }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_PROJECT_PATH: ${{ inputs.project-path }}
+        INPUT_PLATFORMS: ${{ inputs.platforms }}
+        INPUT_TAG_LATEST: ${{ inputs.tag-latest }}
+        INPUT_DOCKERFILE: ${{ inputs.dockerfile }}
+        INPUT_CONTEXT: ${{ inputs.context }}
+        INPUT_REGISTRY: ${{ inputs.registry }}
+      run: bash "${{ github.action_path }}/scripts/build-and-push.sh"
 
 # Define the branding for the action in the GitHub Marketplace
 branding:

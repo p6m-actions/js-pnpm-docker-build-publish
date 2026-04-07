@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Mock for pnpm. Controlled by:
+#   MOCK_PNPM_EXIT    (default 0)    — exit code to return
+#   MOCK_PNPM_VERSION (default 1.0.0) — version string to echo on success
+exit_code="${MOCK_PNPM_EXIT:-0}"
+if [ "$exit_code" -ne 0 ]; then
+  echo "mock pnpm error" >&2
+  exit "$exit_code"
+fi
+echo "\"${MOCK_PNPM_VERSION:-1.0.0}\""

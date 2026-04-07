@@ -1,0 +1,24 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bats
+        run: sudo apt-get install -y bats
+
+      - name: Make test scripts executable
+        run: chmod +x tests/helpers/extract_script.sh tests/mocks/docker tests/mocks/pnpm
+
+      - name: Run tests
+        run: bats tests/action.bats
