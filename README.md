@@ -30,9 +30,9 @@ This action requires Docker to be authenticated to your container registry befor
 - name: Login to Container Registry
   uses: p6m-actions/docker-repository-login@v1
   with:
-    registry: ${{ vars.ARTIFACTORY_HOSTNAME }}
-    username: ${{ secrets.ARTIFACTORY_USERNAME }}
-    password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+    registry: ${{ vars.P6M_ARTIFACTORY_HOSTNAME }}
+    username: ${{ secrets.P6M_ARTIFACTORY_USERNAME }}
+    password: ${{ secrets.P6M_ARTIFACTORY_IDENTITY_TOKEN }}
 ```
 
 > **Note:** The `docker-repository-login` action runs `docker login`, which stores credentials in Docker's config. When this action runs `docker buildx build --push`, Docker automatically uses those stored credentials for the matching registry.
@@ -101,8 +101,8 @@ jobs:
         uses: p6m-actions/docker-repository-login@v1
         with:
           registry: ${{ env.ARTIFACTORY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+          username: ${{ secrets.P6M_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.P6M_ARTIFACTORY_IDENTITY_TOKEN }}
 
       - name: Build and Push Docker Image
         id: build-push
@@ -186,8 +186,8 @@ You can use this action with the platform-application-manifest-dispatch action t
     image-name: "fe-$(basename ${GITHUB_REPOSITORY})"
     environment: "dev"
     digest: ${{ steps.build-push.outputs.image-digest }}
-    update-manifest-token: ${{ secrets.UPDATE_MANIFEST_TOKEN }}
-    platform-dispatch-url: ${{ vars.PLATFORM_DISPATCH_URL }}
+    update-manifest-token: ${{ secrets.P6M_UPDATE_MANIFEST_TOKEN }}
+    platform-dispatch-url: ${{ vars.P6M_PLATFORM_DISPATCH_URL }}
 ```
 
 ### Complete CI/CD Workflow Example
@@ -234,8 +234,8 @@ jobs:
         uses: p6m-actions/docker-repository-login@v1
         with:
           registry: ${{ env.ARTIFACTORY_REGISTRY }}
-          username: ${{ secrets.ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
+          username: ${{ secrets.P6M_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.P6M_ARTIFACTORY_IDENTITY_TOKEN }}
 
       # Build and push Docker image with version from package.json
       - name: Build and Push Docker Image
@@ -253,8 +253,8 @@ jobs:
           image-name: "fe-$(basename ${GITHUB_REPOSITORY})"
           environment: "dev"
           digest: ${{ steps.build-push.outputs.image-digest }}
-          update-manifest-token: ${{ secrets.UPDATE_MANIFEST_TOKEN }}
-          platform-dispatch-url: ${{ vars.PLATFORM_DISPATCH_URL }}
+          update-manifest-token: ${{ secrets.P6M_UPDATE_MANIFEST_TOKEN }}
+          platform-dispatch-url: ${{ vars.P6M_PLATFORM_DISPATCH_URL }}
 ```
 
 ## How It Works
