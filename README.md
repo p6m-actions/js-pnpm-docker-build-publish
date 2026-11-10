@@ -14,6 +14,11 @@ This action works seamlessly with other p6m-actions like:
 - [js-pnpm-build](https://github.com/p6m-actions/js-pnpm-build)
 - [platform-application-manifest-dispatch](https://github.com/p6m-actions/platform-application-manifest-dispatch)
 
+## Node and runner requirements
+
+- Build with Node 22.23.4 or later (24.22.1+ / 26.12.1+ on those lines). Node 20 and older are affected by the 2026-10-21 Node security release. `js-pnpm-setup` falls back to Node 22 when the repo pins nothing.
+- The companion actions (`js-pnpm-setup`, `docker-buildx-setup`) run on the Node 24 Actions runtime. Self-hosted runners need Actions runner 2.327.1 or later. `ubuntu-latest` already qualifies.
+
 ## Prerequisites
 
 This action requires Docker to be authenticated to your container registry before use. It does not handle authentication itself - it relies on credentials stored in Docker's credential store (`~/.docker/config.json`) on the runner.
@@ -92,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: p6m-actions/docker-buildx-setup@v1
@@ -206,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           
@@ -214,7 +219,7 @@ jobs:
       - name: Setup Node.js and PNPM
         uses: p6m-actions/js-pnpm-setup@v1
         with:
-          node-version: 18
+          node-version: "22"
           install-dependencies: true
           
       # Build the application with proper linting
